@@ -50,12 +50,47 @@ system("/Applications/MATLAB_R2022b.app/bin/matlab -nodisplay -r \"run('/Users/g
 
 
 VV <- read.csv("/Users/gregorymatthews/Dropbox/combining_rules_for_shapes/teeth_pop_coords_in_tan_space_of_overall_mean.csv", header = FALSE)
-numPcs <- 10
+VV <- as.matrix(VV)
+numPCs <- 25
 K <- cov(VV)
 svd_out <- svd(K)
 PC_feat <- (as.matrix(VV) %*% svd_out$u[,1:numPcs])
 
-test <- prcomp(VV, center = FALSE, scale = FALSE)
+#I'm going to start with 10 pcs. 
+#svd_out$d - eigen values.  These are the variances.  
+#rnorm() requires sd so we need the sqrt.  
 
+set.seed(1234)
+nsim <- 5
+x_sim <- matrix(NA, nrow = nsim, ncol = numPCs)
+for (i in 1:nsim){
+  x_sim[i,] <- rnorm(numPCs, 0, sqrt(svd_out$d[1:numPCs]))
+}
 
+simulated_shapes_in_tan_space <- x_sim %*% t(svd_out$u[,1:numPCs])
+
+n_col <- ncol(simulated_shapes_in_tan_space)
+
+simulated_shapes_in_tan_space_list <- list()
+for (i in 1:nrow(simulated_shapes_in_tan_space)){
+  simulated_shapes_in_tan_space_list[[i]] <- rbind(simulated_shapes_in_tan_space[i,1:(n_col/2)],
+                                                   simulated_shapes_in_tan_space[i,((n_col/2) + 1):n_col])
+}
+
+#stacked and ready to use in matlab
+simulated_shapes_in_tan_space_out <- do.call(rbind,simulated_shapes_in_tan_space_list)
+
+#Now send these back to shape space
+write.csv(simulated_shapes_in_tan_space_out,file = "/Users/gregorymatthews/Dropbox/combining_rules_for_shapes/simulated_shapes_in_tan_space.csv", row.names = FALSE)
+
+#Now send back to shape space. 
+system("/Applications/MATLAB_R2022b.app/bin/matlab -nodisplay -r \"run('/Users/gregorymatthews/Dropbox/combining_rules_for_shapes/send_sim_shapes_back_to_shape_space.m'); exit\"")
+
+#Read these simulated shapes back in to R. 
+sim_shapes_data_shapespace_beta <- read.csv("/Users/gregorymatthews/Dropbox/combining_rules_for_shapes/sim_shapes_data_shapespace_beta.csv", header = FALSE)
+sim_shapes_data_shapespace_beta <- as.matrix(sim_shapes_data_shapespace_beta)
+
+#Simulated shapes!
+i <- 4
+plot(sim_shapes_data_shapespace_beta[i,1:100],sim_shapes_data_shapespace_beta[i,101:200])
 
